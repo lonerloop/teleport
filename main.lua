@@ -1,5 +1,5 @@
 -- ===============================
--- Teleport (Rayfield) - Pages UI
+-- Teleport (Rayfield) - FIXED PAGES
 -- ===============================
 
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
@@ -43,6 +43,61 @@ end
 -- ===============================
 
 local SavedLocations = {}
+local SavedButtons = {}
+
+-- ===============================
+-- SAVED TAB LOGIC (DEFINE FIRST)
+-- ===============================
+
+local function rebuildSavedTab()
+	-- Remove old buttons
+	for _, btn in ipairs(SavedButtons) do
+		if btn and btn.Destroy then
+			btn:Destroy()
+		end
+	end
+	SavedButtons = {}
+
+	SavedTab:CreateSection("Saved Locations")
+
+	for name, cf in pairs(SavedLocations) do
+		-- Teleport
+		table.insert(SavedButtons, SavedTab:CreateButton({
+			Name = "📍 " .. name,
+			Callback = function()
+				getHRP().CFrame = cf
+			end
+		}))
+
+		-- Rename
+		table.insert(SavedButtons, SavedTab:CreateButton({
+			Name = "✏️ Rename: " .. name,
+			Callback = function()
+				Rayfield:Prompt({
+					Title = "Rename Location",
+					Subtitle = "Enter new name",
+					PlaceholderText = name,
+					Callback = function(newName)
+						if newName ~= "" and not SavedLocations[newName] then
+							SavedLocations[newName] = SavedLocations[name]
+							SavedLocations[name] = nil
+							rebuildSavedTab()
+						end
+					end
+				})
+			end
+		}))
+
+		-- Delete
+		table.insert(SavedButtons, SavedTab:CreateButton({
+			Name = "🗑️ Delete: " .. name,
+			Callback = function()
+				SavedLocations[name] = nil
+				rebuildSavedTab()
+			end
+		}))
+	end
+end
 
 -- ===============================
 -- LOCATION TAB
@@ -85,71 +140,15 @@ LocationTab:CreateButton({
 		end
 
 		SavedLocations[name] = getHRP().CFrame
-		createSavedButton(name)
+		rebuildSavedTab()
 
 		Rayfield:Notify({
 			Title = "Saved",
-			Content = "Location saved",
+			Content = "Location saved successfully",
 			Duration = 2
 		})
 	end
 })
-
--- ===============================
--- SAVED TAB
--- ===============================
-
-SavedTab:CreateSection("Saved Locations")
-
-local function createSavedButton(name)
-	-- Teleport button
-	SavedTab:CreateButton({
-		Name = "📍 " .. name,
-		Callback = function()
-			if SavedLocations[name] then
-				getHRP().CFrame = SavedLocations[name]
-			end
-		end
-	})
-
-	-- Rename button
-	SavedTab:CreateButton({
-		Name = "✏️ Rename: " .. name,
-		Callback = function()
-			Rayfield:Prompt({
-				Title = "Rename Location",
-				Subtitle = "Enter new name",
-				PlaceholderText = name,
-				Callback = function(newName)
-					if newName ~= "" and not SavedLocations[newName] then
-						SavedLocations[newName] = SavedLocations[name]
-						SavedLocations[name] = nil
-						rebuildSavedTab()
-					end
-				end
-			})
-		end
-	})
-
-	-- Delete button
-	SavedTab:CreateButton({
-		Name = "🗑️ Delete: " .. name,
-		Callback = function()
-			SavedLocations[name] = nil
-			rebuildSavedTab()
-		end
-	})
-end
-
-function rebuildSavedTab()
-	SavedTab:Clear()
-
-	SavedTab:CreateSection("Saved Locations")
-
-	for name in pairs(SavedLocations) do
-		createSavedButton(name)
-	end
-end
 
 -- ===============================
 -- Live Position Update
@@ -171,6 +170,6 @@ end)
 
 Rayfield:Notify({
 	Title = "Teleport Loaded",
-	Content = "Using Rayfield pages system",
+	Content = "Saved locations now appear correctly",
 	Duration = 4
 })
