@@ -1,5 +1,5 @@
 -- ===============================
--- Teleport (Rayfield) - WORKING
+-- Teleport (Rayfield) - FINAL FIX
 -- ===============================
 
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
@@ -37,65 +37,11 @@ local Window = Rayfield:CreateWindow({
 	KeySystem = false
 })
 
-local LocationTab = Window:CreateTab("Location", 4483362458)
+-- ===============================
+-- TELEPORT TAB (CREATE FIRST)
+-- ===============================
+
 local TeleportTab = Window:CreateTab("Teleport", 4483362458)
-
--- ===============================
--- LOCATION TAB
--- ===============================
-
-LocationTab:CreateSection("Current Position")
-
-local PositionLabel = LocationTab:CreateLabel("X: 0 | Y: 0 | Z: 0")
-
-LocationTab:CreateSection("Save Location")
-
-local NameInput = LocationTab:CreateInput({
-	Name = "Location Name",
-	PlaceholderText = "e.g. Spawn, Shop",
-	RemoveTextAfterFocusLost = false,
-	Callback = function() end
-})
-
-LocationTab:CreateButton({
-	Name = "Save Current Location",
-	Callback = function()
-		local name = NameInput.CurrentValue
-
-		if not name or name:gsub("%s+", "") == "" then
-			Rayfield:Notify({
-				Title = "Error",
-				Content = "Enter a valid name",
-				Duration = 3
-			})
-			return
-		end
-
-		if SavedLocations[name] then
-			Rayfield:Notify({
-				Title = "Error",
-				Content = "Location already exists",
-				Duration = 3
-			})
-			return
-		end
-
-		SavedLocations[name] = getHRP().CFrame
-		table.insert(LocationNames, name)
-
-		TeleportDropdown:Set(LocationNames)
-
-		Rayfield:Notify({
-			Title = "Saved",
-			Content = "Location saved successfully",
-			Duration = 2
-		})
-	end
-})
-
--- ===============================
--- TELEPORT TAB
--- ===============================
 
 TeleportTab:CreateSection("Select Location")
 
@@ -199,6 +145,61 @@ TeleportTab:CreateButton({
 })
 
 -- ===============================
+-- LOCATION TAB (CREATE AFTER)
+-- ===============================
+
+local LocationTab = Window:CreateTab("Location", 4483362458)
+
+LocationTab:CreateSection("Current Position")
+
+local PositionLabel = LocationTab:CreateLabel("X: 0 | Y: 0 | Z: 0")
+
+LocationTab:CreateSection("Save Location")
+
+local NameInput = LocationTab:CreateInput({
+	Name = "Location Name",
+	PlaceholderText = "e.g. Spawn, Shop",
+	RemoveTextAfterFocusLost = false,
+	Callback = function() end
+})
+
+LocationTab:CreateButton({
+	Name = "Save Current Location",
+	Callback = function()
+		local name = NameInput.CurrentValue
+
+		if not name or name:gsub("%s+", "") == "" then
+			Rayfield:Notify({
+				Title = "Error",
+				Content = "Enter a valid name",
+				Duration = 3
+			})
+			return
+		end
+
+		if SavedLocations[name] then
+			Rayfield:Notify({
+				Title = "Error",
+				Content = "Location already exists",
+				Duration = 3
+			})
+			return
+		end
+
+		SavedLocations[name] = getHRP().CFrame
+		table.insert(LocationNames, name)
+
+		TeleportDropdown:Set(LocationNames)
+
+		Rayfield:Notify({
+			Title = "Saved",
+			Content = "Location saved successfully",
+			Duration = 2
+		})
+	end
+})
+
+-- ===============================
 -- Live Position
 -- ===============================
 
@@ -214,6 +215,6 @@ end)
 
 Rayfield:Notify({
 	Title = "Teleport Loaded",
-	Content = "Everything is now working correctly",
+	Content = "Saved locations now appear correctly",
 	Duration = 4
 })
