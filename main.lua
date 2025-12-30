@@ -1,5 +1,3 @@
-local OrionLib = loadstring(game:HttpGet("https://pastebin.com/raw/0Z4mG5vT"))()
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -11,97 +9,110 @@ local function getHRP()
 end
 
 local SavedLocations = {}
-local LocationNames = {}
-local SelectedLocation = nil
 
-local Window = OrionLib:MakeWindow({
-    Name = "Teleport",
-    HidePremium = true,
-    SaveConfig = false,
-    IntroEnabled = false
-})
+local gui = Instance.new("ScreenGui")
+gui.Name = "TeleportGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
 
-local LocationTab = Window:MakeTab({
-    Name = "Location",
-    PremiumOnly = false
-})
+local frame = Instance.new("Frame")
+frame.Size = UDim2.fromScale(0.8, 0.6)
+frame.Position = UDim2.fromScale(0.1, 0.2)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.Parent = gui
 
-local TeleportTab = Window:MakeTab({
-    Name = "Teleport",
-    PremiumOnly = false
-})
+local corner = Instance.new("UICorner", frame)
+corner.CornerRadius = UDim.new(0, 12)
 
-LocationTab:AddLabel("Current Position")
-local PositionLabel = LocationTab:AddLabel("X: 0 | Y: 0 | Z: 0")
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundTransparency = 1
+title.Text = "Teleport"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.Parent = frame
 
-local NameBox
-LocationTab:AddTextbox({
-    Name = "Location Name",
-    Default = "",
-    TextDisappear = false,
-    Callback = function(text)
-        NameBox = text
+local posLabel = Instance.new("TextLabel")
+posLabel.Position = UDim2.new(0, 10, 0, 50)
+posLabel.Size = UDim2.new(1, -20, 0, 30)
+posLabel.BackgroundTransparency = 1
+posLabel.TextColor3 = Color3.new(1, 1, 1)
+posLabel.Font = Enum.Font.Gotham
+posLabel.TextSize = 14
+posLabel.Parent = frame
+
+local nameBox = Instance.new("TextBox")
+nameBox.PlaceholderText = "Location name"
+nameBox.Size = UDim2.new(1, -20, 0, 30)
+nameBox.Position = UDim2.new(0, 10, 0, 90)
+nameBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+nameBox.TextColor3 = Color3.new(1, 1, 1)
+nameBox.Font = Enum.Font.Gotham
+nameBox.TextSize = 14
+nameBox.Parent = frame
+Instance.new("UICorner", nameBox)
+
+local saveBtn = Instance.new("TextButton")
+saveBtn.Text = "Save Location"
+saveBtn.Size = UDim2.new(1, -20, 0, 30)
+saveBtn.Position = UDim2.new(0, 10, 0, 130)
+saveBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
+saveBtn.TextColor3 = Color3.new(1, 1, 1)
+saveBtn.Font = Enum.Font.GothamBold
+saveBtn.TextSize = 14
+saveBtn.Parent = frame
+Instance.new("UICorner", saveBtn)
+
+local list = Instance.new("UIListLayout")
+list.Padding = UDim.new(0, 6)
+
+local scroll = Instance.new("ScrollingFrame")
+scroll.Position = UDim2.new(0, 10, 0, 180)
+scroll.Size = UDim2.new(1, -20, 1, -190)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.ScrollBarImageTransparency = 0.5
+scroll.BackgroundTransparency = 1
+scroll.Parent = frame
+list.Parent = scroll
+
+local function refreshList()
+    scroll:ClearAllChildren()
+    list.Parent = scroll
+
+    local y = 0
+    for name, cf in pairs(SavedLocations) do
+        local btn = Instance.new("TextButton")
+        btn.Text = name
+        btn.Size = UDim2.new(1, -10, 0, 30)
+        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        btn.TextColor3 = Color3.new(1, 1, 1)
+        btn.Font = Enum.Font.Gotham
+        btn.TextSize = 14
+        btn.Parent = scroll
+        Instance.new("UICorner", btn)
+
+        btn.MouseButton1Click:Connect(function()
+            getHRP().CFrame = cf
+        end)
+
+        y += 36
     end
-})
 
-LocationTab:AddButton({
-    Name = "Save Current Location",
-    Callback = function()
-        if not NameBox or NameBox == "" then return end
-        if SavedLocations[NameBox] then return end
+    scroll.CanvasSize = UDim2.new(0, 0, 0, y)
+end
 
-        SavedLocations[NameBox] = getHRP().CFrame
-        table.insert(LocationNames, NameBox)
-
-        TeleportDropdown:Refresh(LocationNames, true)
-    end
-})
-
-local TeleportDropdown
-TeleportTab:AddDropdown({
-    Name = "Saved Locations",
-    Options = {},
-    Callback = function(value)
-        SelectedLocation = value
-    end
-})
-
-TeleportDropdown = TeleportTab:GetChildren()[#TeleportTab:GetChildren()]
-
-TeleportTab:AddButton({
-    Name = "Teleport to Selected Location",
-    Callback = function()
-        if SelectedLocation and SavedLocations[SelectedLocation] then
-            getHRP().CFrame = SavedLocations[SelectedLocation]
-        end
-    end
-})
-
-TeleportTab:AddButton({
-    Name = "Delete Selected Location",
-    Callback = function()
-        if not SelectedLocation then return end
-
-        SavedLocations[SelectedLocation] = nil
-
-        for i, v in ipairs(LocationNames) do
-            if v == SelectedLocation then
-                table.remove(LocationNames, i)
-                break
-            end
-        end
-
-        SelectedLocation = nil
-        TeleportDropdown:Refresh(LocationNames, true)
-    end
-})
+saveBtn.MouseButton1Click:Connect(function()
+    local name = nameBox.Text
+    if name == "" then return end
+    SavedLocations[name] = getHRP().CFrame
+    nameBox.Text = ""
+    refreshList()
+end)
 
 RunService.RenderStepped:Connect(function()
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
-
     local p = hrp.Position
-    PositionLabel:Set(string.format("X: %.2f | Y: %.2f | Z: %.2f", p.X, p.Y, p.Z))
+    posLabel.Text = string.format("X: %.1f  Y: %.1f  Z: %.1f", p.X, p.Y, p.Z)
 end)
-
-OrionLib:Init()
