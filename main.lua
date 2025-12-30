@@ -1,4 +1,4 @@
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+local OrionLib = loadstring(game:HttpGet("https://pastebin.com/raw/0Z4mG5vT"))()
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -23,49 +23,41 @@ local Window = OrionLib:MakeWindow({
 
 local LocationTab = Window:MakeTab({
     Name = "Location",
-    Icon = "rbxassetid://4483362458",
     PremiumOnly = false
 })
 
 local TeleportTab = Window:MakeTab({
     Name = "Teleport",
-    Icon = "rbxassetid://4483362458",
     PremiumOnly = false
 })
 
 LocationTab:AddLabel("Current Position")
-
 local PositionLabel = LocationTab:AddLabel("X: 0 | Y: 0 | Z: 0")
 
+local NameBox
 LocationTab:AddTextbox({
     Name = "Location Name",
     Default = "",
     TextDisappear = false,
-    Callback = function() end
-})
-
-local NameBox
-for _, v in pairs(LocationTab:GetChildren()) do
-    if v.ClassName == "TextBox" then
-        NameBox = v
+    Callback = function(text)
+        NameBox = text
     end
-end
+})
 
 LocationTab:AddButton({
     Name = "Save Current Location",
     Callback = function()
-        local name = NameBox.Text
+        if not NameBox or NameBox == "" then return end
+        if SavedLocations[NameBox] then return end
 
-        if name == "" then return end
-        if SavedLocations[name] then return end
-
-        SavedLocations[name] = getHRP().CFrame
-        table.insert(LocationNames, name)
+        SavedLocations[NameBox] = getHRP().CFrame
+        table.insert(LocationNames, NameBox)
 
         TeleportDropdown:Refresh(LocationNames, true)
     end
 })
 
+local TeleportDropdown
 TeleportTab:AddDropdown({
     Name = "Saved Locations",
     Options = {},
@@ -82,19 +74,6 @@ TeleportTab:AddButton({
         if SelectedLocation and SavedLocations[SelectedLocation] then
             getHRP().CFrame = SavedLocations[SelectedLocation]
         end
-    end
-})
-
-TeleportTab:AddButton({
-    Name = "Rename Selected Location",
-    Callback = function()
-        if not SelectedLocation then return end
-
-        OrionLib:MakeNotification({
-            Name = "Rename",
-            Content = "Type new name in the textbox and click Save again",
-            Time = 3
-        })
     end
 })
 
@@ -122,9 +101,7 @@ RunService.RenderStepped:Connect(function()
     if not hrp then return end
 
     local p = hrp.Position
-    PositionLabel:Set(
-        string.format("X: %.2f | Y: %.2f | Z: %.2f", p.X, p.Y, p.Z)
-    )
+    PositionLabel:Set(string.format("X: %.2f | Y: %.2f | Z: %.2f", p.X, p.Y, p.Z))
 end)
 
 OrionLib:Init()
