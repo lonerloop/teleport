@@ -1,5 +1,5 @@
 -- ===============================
--- Teleport (Rayfield) - STABLE
+-- Teleport (Rayfield) - WORKING
 -- ===============================
 
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
@@ -87,7 +87,7 @@ LocationTab:CreateButton({
 
 		Rayfield:Notify({
 			Title = "Saved",
-			Content = "Location saved",
+			Content = "Location saved successfully",
 			Duration = 2
 		})
 	end
@@ -97,16 +97,32 @@ LocationTab:CreateButton({
 -- TELEPORT TAB
 -- ===============================
 
-TeleportTab:CreateSection("Saved Locations")
+TeleportTab:CreateSection("Select Location")
 
-TeleportDropdown = TeleportTab:CreateDropdown({
-	Name = "Teleport To",
+local TeleportDropdown = TeleportTab:CreateDropdown({
+	Name = "Saved Locations",
 	Options = {},
 	CurrentOption = {},
 	Callback = function(option)
 		SelectedLocation = option[1]
-		if SelectedLocation and SavedLocations[SelectedLocation] then
-			getHRP().CFrame = SavedLocations[SelectedLocation]
+	end
+})
+
+TeleportTab:CreateButton({
+	Name = "Teleport to Selected Location",
+	Callback = function()
+		if not SelectedLocation then
+			Rayfield:Notify({
+				Title = "Error",
+				Content = "Select a location first",
+				Duration = 3
+			})
+			return
+		end
+
+		local cf = SavedLocations[SelectedLocation]
+		if cf then
+			getHRP().CFrame = cf
 		end
 	end
 })
@@ -198,6 +214,6 @@ end)
 
 Rayfield:Notify({
 	Title = "Teleport Loaded",
-	Content = "Stable Rayfield system active",
+	Content = "Everything is now working correctly",
 	Duration = 4
 })
