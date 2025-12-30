@@ -1,4 +1,4 @@
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -6,188 +6,125 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
 local function getHRP()
-	local char = player.Character or player.CharacterAdded:Wait()
-	return char:WaitForChild("HumanoidRootPart")
+    local char = player.Character or player.CharacterAdded:Wait()
+    return char:WaitForChild("HumanoidRootPart")
 end
 
 local SavedLocations = {}
 local LocationNames = {}
 local SelectedLocation = nil
 
-local Window = Rayfield:CreateWindow({
-	Name = "Teleport",
-	LoadingTitle = "Teleport",
-	LoadingSubtitle = "Rayfield UI",
-	KeySystem = false
+local Window = OrionLib:MakeWindow({
+    Name = "Teleport",
+    HidePremium = true,
+    SaveConfig = false,
+    IntroEnabled = false
 })
 
-local TeleportTab = Window:CreateTab("Teleport", 4483362458)
-
-TeleportTab:CreateSection("Select Location")
-
-local TeleportDropdown = TeleportTab:CreateDropdown({
-	Name = "Saved Locations",
-	Options = {},
-	CurrentOption = nil,
-	Callback = function(option)
-		SelectedLocation = option
-	end
+local LocationTab = Window:MakeTab({
+    Name = "Location",
+    Icon = "rbxassetid://4483362458",
+    PremiumOnly = false
 })
 
-TeleportTab:CreateButton({
-	Name = "Teleport to Selected Location",
-	Callback = function()
-		if not SelectedLocation then
-			Rayfield:Notify({
-				Title = "Error",
-				Content = "Select a location first",
-				Duration = 3
-			})
-			return
-		end
-
-		local cf = SavedLocations[SelectedLocation]
-		if cf then
-			getHRP().CFrame = cf
-		end
-	end
+local TeleportTab = Window:MakeTab({
+    Name = "Teleport",
+    Icon = "rbxassetid://4483362458",
+    PremiumOnly = false
 })
 
-TeleportTab:CreateSection("Manage Location")
+LocationTab:AddLabel("Current Position")
 
-TeleportTab:CreateButton({
-	Name = "Rename Selected Location",
-	Callback = function()
-		if not SelectedLocation then
-			Rayfield:Notify({
-				Title = "Error",
-				Content = "Select a location first",
-				Duration = 3
-			})
-			return
-		end
+local PositionLabel = LocationTab:AddLabel("X: 0 | Y: 0 | Z: 0")
 
-		Rayfield:Prompt({
-			Title = "Rename Location",
-			Subtitle = "Enter new name",
-			PlaceholderText = SelectedLocation,
-			Callback = function(newName)
-				if not newName or newName:gsub("%s+", "") == "" then return end
-				if SavedLocations[newName] then return end
-
-				SavedLocations[newName] = SavedLocations[SelectedLocation]
-				SavedLocations[SelectedLocation] = nil
-
-				for i, v in ipairs(LocationNames) do
-					if v == SelectedLocation then
-						LocationNames[i] = newName
-						break
-					end
-				end
-
-				SelectedLocation = nil
-				TeleportDropdown:Set(LocationNames)
-			end
-		})
-	end
+LocationTab:AddTextbox({
+    Name = "Location Name",
+    Default = "",
+    TextDisappear = false,
+    Callback = function() end
 })
 
-TeleportTab:CreateButton({
-	Name = "Delete Selected Location",
-	Callback = function()
-		if not SelectedLocation then
-			Rayfield:Notify({
-				Title = "Error",
-				Content = "Select a location first",
-				Duration = 3
-			})
-			return
-		end
+local NameBox
+for _, v in pairs(LocationTab:GetChildren()) do
+    if v.ClassName == "TextBox" then
+        NameBox = v
+    end
+end
 
-		SavedLocations[SelectedLocation] = nil
+LocationTab:AddButton({
+    Name = "Save Current Location",
+    Callback = function()
+        local name = NameBox.Text
 
-		for i, v in ipairs(LocationNames) do
-			if v == SelectedLocation then
-				table.remove(LocationNames, i)
-				break
-			end
-		end
+        if name == "" then return end
+        if SavedLocations[name] then return end
 
-		SelectedLocation = nil
-		TeleportDropdown:Set(LocationNames)
+        SavedLocations[name] = getHRP().CFrame
+        table.insert(LocationNames, name)
 
-		Rayfield:Notify({
-			Title = "Deleted",
-			Content = "Location deleted",
-			Duration = 2
-		})
-	end
+        TeleportDropdown:Refresh(LocationNames, true)
+    end
 })
 
-local LocationTab = Window:CreateTab("Location", 4483362458)
-
-LocationTab:CreateSection("Current Position")
-
-local PositionLabel = LocationTab:CreateLabel("X: 0 | Y: 0 | Z: 0")
-
-LocationTab:CreateSection("Save Location")
-
-local NameInput = LocationTab:CreateInput({
-	Name = "Location Name",
-	PlaceholderText = "e.g. Spawn, Shop",
-	RemoveTextAfterFocusLost = false,
-	Callback = function() end
+TeleportTab:AddDropdown({
+    Name = "Saved Locations",
+    Options = {},
+    Callback = function(value)
+        SelectedLocation = value
+    end
 })
 
-LocationTab:CreateButton({
-	Name = "Save Current Location",
-	Callback = function()
-		local name = NameInput.CurrentValue
+TeleportDropdown = TeleportTab:GetChildren()[#TeleportTab:GetChildren()]
 
-		if not name or name:gsub("%s+", "") == "" then
-			Rayfield:Notify({
-				Title = "Error",
-				Content = "Enter a valid name",
-				Duration = 3
-			})
-			return
-		end
+TeleportTab:AddButton({
+    Name = "Teleport to Selected Location",
+    Callback = function()
+        if SelectedLocation and SavedLocations[SelectedLocation] then
+            getHRP().CFrame = SavedLocations[SelectedLocation]
+        end
+    end
+})
 
-		if SavedLocations[name] then
-			Rayfield:Notify({
-				Title = "Error",
-				Content = "Location already exists",
-				Duration = 3
-			})
-			return
-		end
+TeleportTab:AddButton({
+    Name = "Rename Selected Location",
+    Callback = function()
+        if not SelectedLocation then return end
 
-		SavedLocations[name] = getHRP().CFrame
-		table.insert(LocationNames, name)
+        OrionLib:MakeNotification({
+            Name = "Rename",
+            Content = "Type new name in the textbox and click Save again",
+            Time = 3
+        })
+    end
+})
 
-		SelectedLocation = nil
-		TeleportDropdown:Set(LocationNames)
+TeleportTab:AddButton({
+    Name = "Delete Selected Location",
+    Callback = function()
+        if not SelectedLocation then return end
 
-		Rayfield:Notify({
-			Title = "Saved",
-			Content = "Location saved successfully",
-			Duration = 2
-		})
-	end
+        SavedLocations[SelectedLocation] = nil
+
+        for i, v in ipairs(LocationNames) do
+            if v == SelectedLocation then
+                table.remove(LocationNames, i)
+                break
+            end
+        end
+
+        SelectedLocation = nil
+        TeleportDropdown:Refresh(LocationNames, true)
+    end
 })
 
 RunService.RenderStepped:Connect(function()
-	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
 
-	local p = hrp.Position
-	PositionLabel:Set(
-		string.format("X: %.2f | Y: %.2f | Z: %.2f", p.X, p.Y, p.Z)
-	)
+    local p = hrp.Position
+    PositionLabel:Set(
+        string.format("X: %.2f | Y: %.2f | Z: %.2f", p.X, p.Y, p.Z)
+    )
 end)
 
-Rayfield:Notify({
-	Title = "Teleport Loaded",
-	Content = "Ready",
-	Duration = 4
-})
+OrionLib:Init()
