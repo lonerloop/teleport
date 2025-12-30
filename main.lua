@@ -1,5 +1,5 @@
 -- ===============================
--- Teleport (Rayfield)
+-- Teleport (Rayfield) - FIXED
 -- ===============================
 
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
@@ -42,6 +42,7 @@ end
 
 local SavedLocations = {}
 local SelectedLocation = nil
+local LocationNameInput -- will hold input reference
 
 -- ===============================
 -- SECTION: LOCATION
@@ -51,48 +52,11 @@ Tab:CreateSection("Location")
 
 local PositionLabel = Tab:CreateLabel("X: 0 | Y: 0 | Z: 0")
 
-local LocationName = ""
-
-Tab:CreateInput({
+LocationNameInput = Tab:CreateInput({
 	Name = "Location Name",
 	PlaceholderText = "e.g. Spawn, Shop",
 	RemoveTextAfterFocusLost = false,
-	Callback = function(text)
-		LocationName = text
-	end
-})
-
-Tab:CreateButton({
-	Name = "Save Current Location",
-	Callback = function()
-		if LocationName == "" then
-			Rayfield:Notify({
-				Title = "Error",
-				Content = "Enter a location name",
-				Duration = 3
-			})
-			return
-		end
-
-		if SavedLocations[LocationName] then
-			Rayfield:Notify({
-				Title = "Error",
-				Content = "Location already exists",
-				Duration = 3
-			})
-			return
-		end
-
-		SavedLocations[LocationName] = getHRP().CFrame
-		LocationName = ""
-		updateTeleportSection()
-
-		Rayfield:Notify({
-			Title = "Saved",
-			Content = "Location saved",
-			Duration = 2
-		})
-	end
+	Callback = function() end -- handled on save
 })
 
 -- ===============================
@@ -104,7 +68,7 @@ Tab:CreateSection("Teleport")
 local TeleportDropdown
 local ManageDropdown
 
-function updateTeleportSection()
+local function updateTeleportSection()
 	if TeleportDropdown then TeleportDropdown:Destroy() end
 	if ManageDropdown then ManageDropdown:Destroy() end
 
@@ -113,13 +77,15 @@ function updateTeleportSection()
 		table.insert(names, name)
 	end
 
+	table.sort(names)
+
 	TeleportDropdown = Tab:CreateDropdown({
 		Name = "Saved Locations",
 		Options = names,
 		CurrentOption = {},
 		Callback = function(option)
 			SelectedLocation = option[1]
-			if SelectedLocation then
+			if SelectedLocation and SavedLocations[SelectedLocation] then
 				getHRP().CFrame = SavedLocations[SelectedLocation]
 			end
 		end
@@ -174,6 +140,45 @@ end
 updateTeleportSection()
 
 -- ===============================
+-- SAVE BUTTON (FIXED)
+-- ===============================
+
+Tab:CreateButton({
+	Name = "Save Current Location",
+	Callback = function()
+		local name = LocationNameInput.CurrentValue
+
+		if not name or name:gsub("%s+", "") == "" then
+			Rayfield:Notify({
+				Title = "Error",
+				Content = "Please enter a valid location name",
+				Duration = 3
+			})
+			return
+		end
+
+		if SavedLocations[name] then
+			Rayfield:Notify({
+				Title = "Error",
+				Content = "Location already exists",
+				Duration = 3
+			})
+			return
+		end
+
+		SavedLocations[name] = getHRP().CFrame
+		SelectedLocation = name
+		updateTeleportSection()
+
+		Rayfield:Notify({
+			Title = "Saved",
+			Content = "Location saved successfully",
+			Duration = 2
+		})
+	end
+})
+
+-- ===============================
 -- Live Position
 -- ===============================
 
@@ -193,6 +198,6 @@ end)
 
 Rayfield:Notify({
 	Title = "Teleport Loaded",
-	Content = "Rayfield mobile controls enabled",
+	Content = "Saving locations now works correctly",
 	Duration = 4
 })
