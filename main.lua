@@ -1,7 +1,3 @@
--- ===============================
--- Teleport (Rayfield) - FINAL FIX
--- ===============================
-
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Players = game:GetService("Players")
@@ -9,26 +5,14 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
--- ===============================
--- Helpers
--- ===============================
-
 local function getHRP()
 	local char = player.Character or player.CharacterAdded:Wait()
 	return char:WaitForChild("HumanoidRootPart")
 end
 
--- ===============================
--- Data
--- ===============================
-
 local SavedLocations = {}
 local LocationNames = {}
 local SelectedLocation = nil
-
--- ===============================
--- Window
--- ===============================
 
 local Window = Rayfield:CreateWindow({
 	Name = "Teleport",
@@ -37,10 +21,6 @@ local Window = Rayfield:CreateWindow({
 	KeySystem = false
 })
 
--- ===============================
--- TELEPORT TAB (CREATE FIRST)
--- ===============================
-
 local TeleportTab = Window:CreateTab("Teleport", 4483362458)
 
 TeleportTab:CreateSection("Select Location")
@@ -48,9 +28,9 @@ TeleportTab:CreateSection("Select Location")
 local TeleportDropdown = TeleportTab:CreateDropdown({
 	Name = "Saved Locations",
 	Options = {},
-	CurrentOption = {},
+	CurrentOption = nil,
 	Callback = function(option)
-		SelectedLocation = option[1]
+		SelectedLocation = option
 	end
 })
 
@@ -105,7 +85,7 @@ TeleportTab:CreateButton({
 					end
 				end
 
-				SelectedLocation = newName
+				SelectedLocation = nil
 				TeleportDropdown:Set(LocationNames)
 			end
 		})
@@ -143,10 +123,6 @@ TeleportTab:CreateButton({
 		})
 	end
 })
-
--- ===============================
--- LOCATION TAB (CREATE AFTER)
--- ===============================
 
 local LocationTab = Window:CreateTab("Location", 4483362458)
 
@@ -189,6 +165,7 @@ LocationTab:CreateButton({
 		SavedLocations[name] = getHRP().CFrame
 		table.insert(LocationNames, name)
 
+		SelectedLocation = nil
 		TeleportDropdown:Set(LocationNames)
 
 		Rayfield:Notify({
@@ -198,10 +175,6 @@ LocationTab:CreateButton({
 		})
 	end
 })
-
--- ===============================
--- Live Position
--- ===============================
 
 RunService.RenderStepped:Connect(function()
 	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -215,6 +188,6 @@ end)
 
 Rayfield:Notify({
 	Title = "Teleport Loaded",
-	Content = "Saved locations now appear correctly",
+	Content = "Ready",
 	Duration = 4
 })
