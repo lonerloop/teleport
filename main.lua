@@ -1,14 +1,11 @@
 -- ===============================
--- Rayfield Teleport Bookmark Hub
+-- Teleport (Rayfield)
 -- ===============================
 
--- Load Rayfield
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
--- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
@@ -17,28 +14,42 @@ local player = Players.LocalPlayer
 -- ===============================
 
 local Window = Rayfield:CreateWindow({
-	Name = "Teleport Bookmarks",
-	LoadingTitle = "Teleport Bookmarks",
+	Name = "Teleport",
+	LoadingTitle = "Teleport",
 	LoadingSubtitle = "Rayfield UI",
 	ConfigurationSaving = {
 		Enabled = true,
-		FolderName = "TeleportBookmarks",
-		FileName = "SavedLocations"
+		FolderName = "Teleport",
+		FileName = "Locations"
 	},
 	KeySystem = false
 })
 
-local Tab = Window:CreateTab("Teleports", 4483362458)
+local Tab = Window:CreateTab("Teleport", 4483362458)
 
 -- ===============================
--- Sections
+-- Helpers
 -- ===============================
 
-Tab:CreateSection("Current Position")
+local function getHRP()
+	local char = player.Character or player.CharacterAdded:Wait()
+	return char:WaitForChild("HumanoidRootPart")
+end
+
+-- ===============================
+-- Data
+-- ===============================
+
+local SavedLocations = {}
+local SelectedLocation = nil
+
+-- ===============================
+-- SECTION: LOCATION
+-- ===============================
+
+Tab:CreateSection("Location")
 
 local PositionLabel = Tab:CreateLabel("X: 0 | Y: 0 | Z: 0")
-
-Tab:CreateSection("Save Location")
 
 local LocationName = ""
 
@@ -46,74 +57,10 @@ Tab:CreateInput({
 	Name = "Location Name",
 	PlaceholderText = "e.g. Spawn, Shop",
 	RemoveTextAfterFocusLost = false,
-	Callback = function(Text)
-		LocationName = Text
+	Callback = function(text)
+		LocationName = text
 	end
 })
-
--- ===============================
--- Storage
--- ===============================
-
-local SavedLocations = {}
-local Buttons = {}
-
-local function getHRP()
-	local char = player.Character or player.CharacterAdded:Wait()
-	return char:WaitForChild("HumanoidRootPart")
-end
-
-local function refreshButtons()
-	for _, btn in pairs(Buttons) do
-		btn:Destroy()
-	end
-	Buttons = {}
-
-	Tab:CreateSection("Saved Locations")
-
-	for name, cf in pairs(SavedLocations) do
-		local Button = Tab:CreateButton({
-			Name = "📍 " .. name,
-			Callback = function()
-				getHRP().CFrame = cf
-			end
-		})
-
-		-- Rename
-		Tab:CreateButton({
-			Name = "✏️ Rename: " .. name,
-			Callback = function()
-				Rayfield:Prompt({
-					Title = "Rename Location",
-					Subtitle = "Enter new name",
-					PlaceholderText = name,
-					Callback = function(newName)
-						if newName ~= "" and not SavedLocations[newName] then
-							SavedLocations[newName] = SavedLocations[name]
-							SavedLocations[name] = nil
-							refreshButtons()
-						end
-					end
-				})
-			end
-		})
-
-		-- Delete
-		Tab:CreateButton({
-			Name = "🗑️ Delete: " .. name,
-			Callback = function()
-				SavedLocations[name] = nil
-				refreshButtons()
-			end
-		})
-
-		table.insert(Buttons, Button)
-	end
-end
-
--- ===============================
--- Save Button
--- ===============================
 
 Tab:CreateButton({
 	Name = "Save Current Location",
@@ -121,33 +68,117 @@ Tab:CreateButton({
 		if LocationName == "" then
 			Rayfield:Notify({
 				Title = "Error",
-				Content = "Enter a location name first",
+				Content = "Enter a location name",
+				Duration = 3
+			})
+			return
+		end
+
+		if SavedLocations[LocationName] then
+			Rayfield:Notify({
+				Title = "Error",
+				Content = "Location already exists",
 				Duration = 3
 			})
 			return
 		end
 
 		SavedLocations[LocationName] = getHRP().CFrame
-		refreshButtons()
+		LocationName = ""
+		updateTeleportSection()
 
 		Rayfield:Notify({
 			Title = "Saved",
-			Content = "Location saved: " .. LocationName,
-			Duration = 3
+			Content = "Location saved",
+			Duration = 2
 		})
-
-		LocationName = ""
 	end
 })
 
 -- ===============================
--- Live Position Update
+-- SECTION: TELEPORT
+-- ===============================
+
+Tab:CreateSection("Teleport")
+
+local TeleportDropdown
+local ManageDropdown
+
+function updateTeleportSection()
+	if TeleportDropdown then TeleportDropdown:Destroy() end
+	if ManageDropdown then ManageDropdown:Destroy() end
+
+	local names = {}
+	for name in pairs(SavedLocations) do
+		table.insert(names, name)
+	end
+
+	TeleportDropdown = Tab:CreateDropdown({
+		Name = "Saved Locations",
+		Options = names,
+		CurrentOption = {},
+		Callback = function(option)
+			SelectedLocation = option[1]
+			if SelectedLocation then
+				getHRP().CFrame = SavedLocations[SelectedLocation]
+			end
+		end
+	})
+
+	ManageDropdown = Tab:CreateDropdown({
+		Name = "Manage Location",
+		Options = { "Rename", "Delete" },
+		CurrentOption = {},
+		Callback = function(option)
+			if not SelectedLocation then
+				Rayfield:Notify({
+					Title = "Error",
+					Content = "Select a location first",
+					Duration = 3
+				})
+				return
+			end
+
+			local action = option[1]
+
+			if action == "Delete" then
+				SavedLocations[SelectedLocation] = nil
+				SelectedLocation = nil
+				updateTeleportSection()
+
+				Rayfield:Notify({
+					Title = "Deleted",
+					Content = "Location removed",
+					Duration = 2
+				})
+
+			elseif action == "Rename" then
+				Rayfield:Prompt({
+					Title = "Rename Location",
+					Subtitle = "Enter new name",
+					PlaceholderText = SelectedLocation,
+					Callback = function(newName)
+						if newName ~= "" and not SavedLocations[newName] then
+							SavedLocations[newName] = SavedLocations[SelectedLocation]
+							SavedLocations[SelectedLocation] = nil
+							SelectedLocation = newName
+							updateTeleportSection()
+						end
+					end
+				})
+			end
+		end
+	})
+end
+
+updateTeleportSection()
+
+-- ===============================
+-- Live Position
 -- ===============================
 
 RunService.RenderStepped:Connect(function()
-	local char = player.Character
-	if not char then return end
-	local hrp = char:FindFirstChild("HumanoidRootPart")
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
 	local p = hrp.Position
@@ -157,78 +188,11 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ===============================
--- Floating Toggle Button (Mobile + PC)
--- ===============================
-
-local ToggleGui = Instance.new("ScreenGui")
-ToggleGui.Name = "TeleportToggle"
-ToggleGui.ResetOnSpawn = false
-ToggleGui.Parent = player:WaitForChild("PlayerGui")
-
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.fromOffset(50, 50)
-ToggleButton.Position = UDim2.fromScale(0.05, 0.5)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(140, 82, 255)
-ToggleButton.Text = "≡"
-ToggleButton.TextSize = 28
-ToggleButton.TextColor3 = Color3.new(1,1,1)
-ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.Parent = ToggleGui
-ToggleButton.AutoButtonColor = false
-
-local Corner = Instance.new("UICorner", ToggleButton)
-Corner.CornerRadius = UDim.new(0, 12)
-
-local UIVisible = true
-
-ToggleButton.MouseButton1Click:Connect(function()
-	UIVisible = not UIVisible
-	Rayfield:SetVisibility(UIVisible)
-end)
-
--- Drag logic
-local dragging, dragStart, startPos = false
-
-local function updateDrag(input)
-	local delta = input.Position - dragStart
-	ToggleButton.Position = UDim2.new(
-		startPos.X.Scale,
-		startPos.X.Offset + delta.X,
-		startPos.Y.Scale,
-		startPos.Y.Offset + delta.Y
-	)
-end
-
-ToggleButton.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1
-	or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = ToggleButton.Position
-
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-			end
-		end)
-	end
-end)
-
-ToggleButton.InputChanged:Connect(function(input)
-	if dragging and (
-		input.UserInputType == Enum.UserInputType.MouseMovement
-		or input.UserInputType == Enum.UserInputType.Touch
-	) then
-		updateDrag(input)
-	end
-end)
-
--- ===============================
--- Loaded Notification
+-- Loaded
 -- ===============================
 
 Rayfield:Notify({
-	Title = "Teleport Bookmarks",
-	Content = "Save, rename, delete & teleport easily",
-	Duration = 5
+	Title = "Teleport Loaded",
+	Content = "Rayfield mobile controls enabled",
+	Duration = 4
 })
