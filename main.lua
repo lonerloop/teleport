@@ -1,118 +1,132 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
-local player = Players.LocalPlayer
+-- 1. Load the UI Library (Orion)
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
-local function getHRP()
-    local char = player.Character or player.CharacterAdded:Wait()
-    return char:WaitForChild("HumanoidRootPart")
-end
+-- 2. Create the Window
+local Window = OrionLib:MakeWindow({
+    Name = "Teleport Manager", 
+    HidePremium = false, 
+    SaveConfig = false, 
+    ConfigFolder = "OrionTest"
+})
 
-local SavedLocations = {}
+-- Variables to store data
+local savedLocations = {}
+local currentLocationName = "Point 1"
+local selectedLocation = nil
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "TeleportGui"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
+-- =================================================================
+-- TAB: LIVE STATS
+-- =================================================================
+local StatsTab = Window:MakeTab({
+	Name = "Live Stats",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.fromScale(0.8, 0.6)
-frame.Position = UDim2.fromScale(0.1, 0.2)
-frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-frame.Parent = gui
+local LocationLabel = StatsTab:AddLabel("Current Position: Loading...")
 
-local corner = Instance.new("UICorner", frame)
-corner.CornerRadius = UDim.new(0, 12)
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 40)
-title.BackgroundTransparency = 1
-title.Text = "Teleport"
-title.TextColor3 = Color3.new(1, 1, 1)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 20
-title.Parent = frame
-
-local posLabel = Instance.new("TextLabel")
-posLabel.Position = UDim2.new(0, 10, 0, 50)
-posLabel.Size = UDim2.new(1, -20, 0, 30)
-posLabel.BackgroundTransparency = 1
-posLabel.TextColor3 = Color3.new(1, 1, 1)
-posLabel.Font = Enum.Font.Gotham
-posLabel.TextSize = 14
-posLabel.Parent = frame
-
-local nameBox = Instance.new("TextBox")
-nameBox.PlaceholderText = "Location name"
-nameBox.Size = UDim2.new(1, -20, 0, 30)
-nameBox.Position = UDim2.new(0, 10, 0, 90)
-nameBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-nameBox.TextColor3 = Color3.new(1, 1, 1)
-nameBox.Font = Enum.Font.Gotham
-nameBox.TextSize = 14
-nameBox.Parent = frame
-Instance.new("UICorner", nameBox)
-
-local saveBtn = Instance.new("TextButton")
-saveBtn.Text = "Save Location"
-saveBtn.Size = UDim2.new(1, -20, 0, 30)
-saveBtn.Position = UDim2.new(0, 10, 0, 130)
-saveBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
-saveBtn.TextColor3 = Color3.new(1, 1, 1)
-saveBtn.Font = Enum.Font.GothamBold
-saveBtn.TextSize = 14
-saveBtn.Parent = frame
-Instance.new("UICorner", saveBtn)
-
-local list = Instance.new("UIListLayout")
-list.Padding = UDim.new(0, 6)
-
-local scroll = Instance.new("ScrollingFrame")
-scroll.Position = UDim2.new(0, 10, 0, 180)
-scroll.Size = UDim2.new(1, -20, 1, -190)
-scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-scroll.ScrollBarImageTransparency = 0.5
-scroll.BackgroundTransparency = 1
-scroll.Parent = frame
-list.Parent = scroll
-
-local function refreshList()
-    scroll:ClearAllChildren()
-    list.Parent = scroll
-
-    local y = 0
-    for name, cf in pairs(SavedLocations) do
-        local btn = Instance.new("TextButton")
-        btn.Text = name
-        btn.Size = UDim2.new(1, -10, 0, 30)
-        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        btn.TextColor3 = Color3.new(1, 1, 1)
-        btn.Font = Enum.Font.Gotham
-        btn.TextSize = 14
-        btn.Parent = scroll
-        Instance.new("UICorner", btn)
-
-        btn.MouseButton1Click:Connect(function()
-            getHRP().CFrame = cf
+-- Loop to update location live
+task.spawn(function()
+    while task.wait(0.1) do -- Updates every 0.1 seconds to reduce lag
+        pcall(function()
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local pos = LocalPlayer.Character.HumanoidRootPart.Position
+                -- Format the vector to look clean (X, Y, Z)
+                local formattedPos = string.format("(%d, %d, %d)", math.floor(pos.X), math.floor(pos.Y), math.floor(pos.Z))
+                LocationLabel:Set("Pos: " .. formattedPos)
+            else
+                LocationLabel:Set("Pos: Waiting for Character...")
+            end
         end)
-
-        y += 36
     end
-
-    scroll.CanvasSize = UDim2.new(0, 0, 0, y)
-end
-
-saveBtn.MouseButton1Click:Connect(function()
-    local name = nameBox.Text
-    if name == "" then return end
-    SavedLocations[name] = getHRP().CFrame
-    nameBox.Text = ""
-    refreshList()
 end)
 
-RunService.RenderStepped:Connect(function()
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local p = hrp.Position
-    posLabel.Text = string.format("X: %.1f  Y: %.1f  Z: %.1f", p.X, p.Y, p.Z)
-end)
+-- =================================================================
+-- TAB: WAYPOINTS
+-- =================================================================
+local WaypointTab = Window:MakeTab({
+	Name = "Waypoints",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+
+local Section = WaypointTab:AddSection({
+	Name = "Create New Waypoint"
+})
+
+-- Textbox to name the location
+WaypointTab:AddTextbox({
+	Name = "Location Name",
+	Default = "Point 1",
+	TextDisappear = false,
+	Callback = function(Value)
+		currentLocationName = Value
+	end	
+})
+
+-- The Dropdown (Declared early so we can refresh it later)
+local TeleportDropdown
+
+-- Button to Save Current Location
+WaypointTab:AddButton({
+	Name = "Save Current Location",
+	Callback = function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local currentCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
+            
+            -- Save to our table
+            savedLocations[currentLocationName] = currentCFrame
+            
+            -- Notification
+            OrionLib:MakeNotification({
+                Name = "Success",
+                Content = "Saved " .. currentLocationName,
+                Image = "rbxassetid://4483345998",
+                Time = 5
+            })
+
+            -- Refresh the dropdown list
+            local keys = {}
+            for k, v in pairs(savedLocations) do table.insert(keys, k) end
+            TeleportDropdown:Refresh(keys, true)
+        end
+  	end    
+})
+
+Section = WaypointTab:AddSection({
+	Name = "Teleport"
+})
+
+-- Dropdown to choose location
+TeleportDropdown = WaypointTab:AddDropdown({
+	Name = "Select Location",
+	Default = "",
+	Options = {},
+	Callback = function(Value)
+		selectedLocation = savedLocations[Value]
+	end    
+})
+
+-- Button to actually Teleport
+WaypointTab:AddButton({
+	Name = "Teleport Now",
+	Callback = function()
+        if selectedLocation and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = selectedLocation
+        else
+            OrionLib:MakeNotification({
+                Name = "Error",
+                Content = "No location selected or character missing!",
+                Image = "rbxassetid://4483345998",
+                Time = 5
+            })
+        end
+  	end    
+})
+
+-- Initialize the library
+OrionLib:Init()
