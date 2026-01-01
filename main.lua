@@ -2,131 +2,127 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- 1. Load the UI Library (Orion)
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+-- 1. Load Rayfield Library
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 -- 2. Create the Window
-local Window = OrionLib:MakeWindow({
-    Name = "Teleport Manager", 
-    HidePremium = false, 
-    SaveConfig = false, 
-    ConfigFolder = "OrionTest"
+local Window = Rayfield:CreateWindow({
+   Name = "Location Tool",
+   LoadingTitle = "Initializing...",
+   LoadingSubtitle = "by lonerloop",
+   ConfigurationSaving = {
+      Enabled = false,
+      FolderName = nil, 
+      FileName = "LocTool"
+   },
+   KeySystem = false,
 })
 
--- Variables to store data
+-- Data Storage
 local savedLocations = {}
 local currentLocationName = "Point 1"
-local selectedLocation = nil
+local selectedTarget = nil
+local TeleportDropdown -- Forward declaration
 
 -- =================================================================
--- TAB: LIVE STATS
+-- PAGE 1: LOCATION (Live Stats & Saving)
 -- =================================================================
-local StatsTab = Window:MakeTab({
-	Name = "Live Stats",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
-})
+local LocationTab = Window:CreateTab("Location", 4483362458) -- Icon
 
-local LocationLabel = StatsTab:AddLabel("Current Position: Loading...")
+LocationTab:CreateSection("Live Coordinates")
 
--- Loop to update location live
+local LocationLabel = LocationTab:CreateLabel("Pos: Loading...")
+
+-- Live Location Updater
 task.spawn(function()
-    while task.wait(0.1) do -- Updates every 0.1 seconds to reduce lag
+    while task.wait(0.1) do
         pcall(function()
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 local pos = LocalPlayer.Character.HumanoidRootPart.Position
-                -- Format the vector to look clean (X, Y, Z)
-                local formattedPos = string.format("(%d, %d, %d)", math.floor(pos.X), math.floor(pos.Y), math.floor(pos.Z))
-                LocationLabel:Set("Pos: " .. formattedPos)
+                -- Format: X, Y, Z
+                local fmtPos = string.format("%d, %d, %d", math.floor(pos.X), math.floor(pos.Y), math.floor(pos.Z))
+                LocationLabel:Set(fmtPos)
             else
-                LocationLabel:Set("Pos: Waiting for Character...")
+                LocationLabel:Set("Waiting for Char...")
             end
         end)
     end
 end)
 
--- =================================================================
--- TAB: WAYPOINTS
--- =================================================================
-local WaypointTab = Window:MakeTab({
-	Name = "Waypoints",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
+LocationTab:CreateSection("Save Location")
+
+-- Input for custom name
+LocationTab:CreateInput({
+   Name = "Name this spot",
+   PlaceholderText = "e.g. Base",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+        currentLocationName = Text
+   end,
 })
 
-local Section = WaypointTab:AddSection({
-	Name = "Create New Waypoint"
-})
-
--- Textbox to name the location
-WaypointTab:AddTextbox({
-	Name = "Location Name",
-	Default = "Point 1",
-	TextDisappear = false,
-	Callback = function(Value)
-		currentLocationName = Value
-	end	
-})
-
--- The Dropdown (Declared early so we can refresh it later)
-local TeleportDropdown
-
--- Button to Save Current Location
-WaypointTab:AddButton({
-	Name = "Save Current Location",
-	Callback = function()
+-- Save Button
+LocationTab:CreateButton({
+   Name = "Save Current Position",
+   Callback = function()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local currentCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
+            local currentCF = LocalPlayer.Character.HumanoidRootPart.CFrame
             
-            -- Save to our table
-            savedLocations[currentLocationName] = currentCFrame
+            -- Save to table
+            savedLocations[currentLocationName] = currentCF
             
             -- Notification
-            OrionLib:MakeNotification({
-                Name = "Success",
-                Content = "Saved " .. currentLocationName,
-                Image = "rbxassetid://4483345998",
-                Time = 5
+            Rayfield:Notify({
+               Title = "Saved",
+               Content = "Saved: " .. currentLocationName,
+               Duration = 2,
+               Image = 4483362458,
             })
-
-            -- Refresh the dropdown list
-            local keys = {}
-            for k, v in pairs(savedLocations) do table.insert(keys, k) end
-            TeleportDropdown:Refresh(keys, true)
+            
+            -- REFRESH THE DROPDOWN ON PAGE 2
+            local options = {}
+            for name, _ in pairs(savedLocations) do
+                table.insert(options, name)
+            end
+            TeleportDropdown:Refresh(options)
         end
-  	end    
+   end,
 })
 
-Section = WaypointTab:AddSection({
-	Name = "Teleport"
+-- =================================================================
+-- PAGE 2: TELEPORT (View & Go)
+-- =================================================================
+local TeleportTab = Window:CreateTab("Teleport", 4483362458)
+
+TeleportTab:CreateSection("Saved Spots")
+
+-- The Dropdown to see/select locations
+TeleportDropdown = TeleportTab:CreateDropdown({
+   Name = "Select a Location",
+   Options = {"(Save a spot in Page 1)"},
+   CurrentOption = {"(Save a spot in Page 1)"},
+   MultipleOptions = false,
+   Flag = "TeleportDropdown", 
+   Callback = function(Option)
+        local targetName = Option[1]
+        if savedLocations[targetName] then
+            selectedTarget = savedLocations[targetName]
+        end
+   end,
 })
 
--- Dropdown to choose location
-TeleportDropdown = WaypointTab:AddDropdown({
-	Name = "Select Location",
-	Default = "",
-	Options = {},
-	Callback = function(Value)
-		selectedLocation = savedLocations[Value]
-	end    
-})
-
--- Button to actually Teleport
-WaypointTab:AddButton({
-	Name = "Teleport Now",
-	Callback = function()
-        if selectedLocation and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = selectedLocation
+TeleportTab:CreateButton({
+   Name = "Teleport",
+   Callback = function()
+        if selectedTarget and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = selectedTarget
         else
-            OrionLib:MakeNotification({
-                Name = "Error",
-                Content = "No location selected or character missing!",
-                Image = "rbxassetid://4483345998",
-                Time = 5
+             Rayfield:Notify({
+               Title = "Error",
+               Content = "Select a valid location first!",
+               Duration = 2,
+               Image = 4483362458,
             })
         end
-  	end    
+   end,
 })
-
--- Initialize the library
-OrionLib:Init()
